@@ -51,33 +51,34 @@
 
   <script>
     let previewData = {};
-
+  
     document.getElementById('previewForm').addEventListener('submit', async function (e) {
       e.preventDefault();
-
+  
       const memoInput = document.getElementById('memoInput').value;
       const sender = document.getElementById('sender').value;
-
+  
       const res = await fetch('/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memoInput })
       });
-
+  
       const data = await res.json();
-
+  
       if (data.error) {
         alert("⚠️ " + data.error);
         return;
       }
-
+  
       previewData = {
-        amount: data.amount,
-        memo: data.memo,
-        recipient: data.recipient,
-        sender
+        // ✅ Force types to be explicit
+        amount: Number(data.amount),
+        memo: String(data.memo || 'No memo'),
+        recipient: String(data.recipient),
+        sender: String(sender)
       };
-
+  
       document.getElementById('previewSender').textContent = sender;
       document.getElementById('previewRecipient').textContent = data.recipient;
       document.getElementById('previewAmount').textContent = data.amount;
@@ -85,26 +86,26 @@
       document.getElementById('confirmBox').style.display = 'block';
       document.getElementById('resultBox').style.display = 'none';
     });
-
+  
     document.getElementById('confirmBtn').addEventListener('click', async function () {
       const res = await fetch('/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(previewData)
+        body: JSON.stringify(previewData) // ✅ Preview data is now guaranteed to be well-typed
       });
-
+  
       const data = await res.json();
-
+  
       if (data.error) {
         alert("❌ " + data.error);
         return;
       }
-
+  
       document.getElementById('txHash').textContent = data.txHash;
       document.getElementById('explorerLink').href = data.explorer;
       document.getElementById('resultBox').style.display = 'block';
       document.getElementById('confirmBox').style.display = 'none';
     });
-  </script>
+  </script>  
 </body>
 </html>
