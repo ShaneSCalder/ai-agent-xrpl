@@ -1,0 +1,15 @@
+/* public/css/style.css */
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f9f9f9;
+  }
+  
+  .container {
+    max-width: 600px;
+  }
+  
+  #memoOutput {
+    transition: all 0.3s ease;
+  }
+  

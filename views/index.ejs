@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>XRP Agent</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h2 class="text-center mb-4">🧠 AI-Powered XRP Transaction Agent</h2>
+
+    <!-- Step 1: Input -->
+    <form id="previewForm">
+      <div class="mb-3">
+        <label for="sender" class="form-label">Sender Wallet</label>
+        <select class="form-select" id="sender" required>
+          <option value="Shane">Shane</option>
+          <option value="Luc">Luc</option>
+          <option value="Florian">Florian</option>
+          <option value="Thomas">Thomas</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="memoInput" class="form-label">Transaction Description</label>
+        <input type="text" id="memoInput" class="form-control" placeholder="e.g., Send 15 XRP to Florian for support" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">Preview Transaction</button>
+    </form>
+
+    <!-- Step 2: Preview -->
+    <div class="mt-4" id="confirmBox" style="display: none;">
+      <h5 class="text-success">Transaction Preview</h5>
+      <p><strong>Sender:</strong> <span id="previewSender"></span></p>
+      <p><strong>Recipient:</strong> <span id="previewRecipient"></span></p>
+      <p><strong>Amount:</strong> <span id="previewAmount"></span> XRP</p>
+      <p><strong>Memo:</strong> <span id="previewMemo"></span></p>
+      <button class="btn btn-success w-100" id="confirmBtn">Confirm & Send</button>
+    </div>
+
+    <!-- Step 3: Result -->
+    <div class="mt-4" id="resultBox" style="display: none;">
+      <h4>✅ Transaction Complete</h4>
+      <p><strong>Transaction Hash:</strong> <code id="txHash"></code></p>
+      <p><a href="#" target="_blank" id="explorerLink" class="btn btn-outline-success btn-sm">View on XRP Testnet Explorer</a></p>
+    </div>
+  </div>
+
+  <script>
+    let previewData = {};
+
+    document.getElementById('previewForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const memoInput = document.getElementById('memoInput').value;
+      const sender = document.getElementById('sender').value;
+
+      const res = await fetch('/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memoInput })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert("⚠️ " + data.error);
+        return;
+      }
+
+      previewData = {
+        amount: data.amount,
+        memo: data.memo,
+        recipient: data.recipient,
+        sender
+      };
+
+      document.getElementById('previewSender').textContent = sender;
+      document.getElementById('previewRecipient').textContent = data.recipient;
+      document.getElementById('previewAmount').textContent = data.amount;
+      document.getElementById('previewMemo').textContent = data.memo;
+      document.getElementById('confirmBox').style.display = 'block';
+      document.getElementById('resultBox').style.display = 'none';
+    });
+
+    document.getElementById('confirmBtn').addEventListener('click', async function () {
+      const res = await fetch('/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(previewData)
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert("❌ " + data.error);
+        return;
+      }
+
+      document.getElementById('txHash').textContent = data.txHash;
+      document.getElementById('explorerLink').href = data.explorer;
+      document.getElementById('resultBox').style.display = 'block';
+      document.getElementById('confirmBox').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
