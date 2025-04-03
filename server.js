@@ -82,17 +82,26 @@ Respond ONLY in this JSON format:
 app.post('/confirm', async (req, res) => {
   let { amount, memo, recipient, sender } = req.body;
 
-  // Debug logs (for Vercel and local)
-  console.log("DEBUG: /confirm payload:", req.body);
-  console.log("DEBUG: typeof amount:", typeof amount);
-  console.log("DEBUG: typeof memo:", typeof memo);
+  console.log("📦 /confirm payload:", req.body);
 
-  // Safeguard against Vercel’s edge/runtime parsing quirks
+  // === Sanitize & validate ===
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
-  memo = typeof memo === 'string' ? memo : (memo ? JSON.stringify(memo) : 'No memo provided');
+  if (!amount || isNaN(amount)) {
+    return res.status(400).json({ error: 'Amount must be a valid number.' });
+  }
 
-  if (!amount || !memo || !recipient || !sender || isNaN(amount)) {
-    return res.status(400).json({ error: 'Invalid transaction data.' });
+  memo = typeof memo === 'string'
+    ? memo.trim()
+    : memo
+    ? JSON.stringify(memo).trim()
+    : 'No memo provided';
+
+  if (memo.length > 100) {
+    memo = memo.slice(0, 97) + '...';
+  }
+
+  if (!recipient || !sender) {
+    return res.status(400).json({ error: 'Recipient and sender are required.' });
   }
 
   const senderWallet = walletMap[sender];
@@ -115,16 +124,17 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(String(memo), 'utf8').toString('hex') // 👈 Ensure memo is string
+          MemoData: Buffer.from(memo, 'utf8').toString('hex')
         }
       }]
     };
 
-    console.log("DEBUG: TX object to submit:", tx);
+    console.log("🛠 TX to XRPL:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
     const result = await client.submitAndWait(signed.tx_blob);
+
     await client.disconnect();
 
     const hash = signed.hash;
@@ -143,5 +153,6 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
 
