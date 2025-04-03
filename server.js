@@ -82,28 +82,41 @@ Respond ONLY in this JSON format:
 app.post('/confirm', async (req, res) => {
   let { amount, memo, recipient, sender } = req.body;
 
-  console.log("🟡 /confirm payload received:", req.body);
+  console.log("⚠️ RAW req.body:", req.body);
+  console.log("🧪 typeof amount:", typeof amount);
+  console.log("🧪 typeof memo:", typeof memo);
+  console.log("🧪 typeof recipient:", typeof recipient);
+  console.log("🧪 typeof sender:", typeof sender);
 
-  // === Sanitize and validate amount
+  // Sanitize amount
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
   if (!amount || isNaN(amount)) {
     return res.status(400).json({ error: 'Amount must be a valid number.' });
   }
 
-  // === Sanitize memo with strict safety (for Vercel/XRPL)
+  // Sanitize memo
   let cleanMemo;
   if (typeof memo === 'string') {
     cleanMemo = memo.trim();
   } else if (typeof memo === 'object') {
-    cleanMemo = JSON.stringify(memo).trim();
+    cleanMemo = JSON.stringify(memo);
   } else if (memo === undefined || memo === null) {
     cleanMemo = 'No memo provided';
   } else {
-    cleanMemo = String(memo).trim();
+    cleanMemo = String(memo);
   }
 
   if (cleanMemo.length > 100) {
     cleanMemo = cleanMemo.slice(0, 97) + '...';
+  }
+
+  // Encode memo safely
+  let hexMemo;
+  try {
+    hexMemo = Buffer.from(cleanMemo, 'utf8').toString('hex');
+  } catch (e) {
+    console.error("❌ Buffer.from failed:", e.message);
+    hexMemo = Buffer.from("Fallback memo", 'utf8').toString('hex');
   }
 
   if (!recipient || !sender) {
@@ -130,7 +143,7 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(cleanMemo, 'utf8').toString('hex')
+          MemoData: hexMemo
         }
       }]
     };
@@ -159,5 +172,6 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
 
