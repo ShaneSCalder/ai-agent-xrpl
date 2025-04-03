@@ -86,7 +86,8 @@ WALLET_THOMAS_SECRET=sXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 WALLET_THOMAS_SECRET_OLD=sOldThomasSecret
 ```
 ---
-#Note: You can change the names in the genWalletwitNames.js file 
+# Note: You can change the names in the genWalletwitNames.js file 
+- don't use .env in a production this is for education and ease of use. 
 ---
 
 ## ✅ dev.js – Local Development Entry Point
@@ -167,4 +168,8 @@ process.env.OPENAI_API_KEY
 ```
 no .env required 
 
+## Vercel site 
+
+[AI-Agent-XRPL
+](https://ai-agent-xrpl.vercel.app/)
 
