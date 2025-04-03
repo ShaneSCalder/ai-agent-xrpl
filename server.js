@@ -64,22 +64,7 @@ Respond ONLY in this JSON format:
       }
     );
 
-    const parsed = JSON.parse(response.data.choices[0].message.content.trim());
-
-    const amount = typeof parsed.amount === 'number' ? parsed.amount : Number(parsed.amount);
-    const recipient = parsed.recipient;
-    let memo = parsed.memo;
-
-    // ✅ Defensive memo sanitization
-    memo = typeof memo === 'string'
-      ? memo.trim()
-      : memo
-      ? JSON.stringify(memo).trim()
-      : 'No memo provided';
-
-    if (memo.length > 100) {
-      memo = memo.slice(0, 97) + '...';
-    }
+    const { amount, recipient, memo } = JSON.parse(response.data.choices[0].message.content.trim());
 
     if (!walletMap[recipient]) {
       return res.status(400).json({ error: `Recipient "${recipient}" not recognized.` });
@@ -95,27 +80,10 @@ Respond ONLY in this JSON format:
 
 // === /confirm ===
 app.post('/confirm', async (req, res) => {
-  let { amount, memo, recipient, sender } = req.body;
+  const { amount, memo, recipient, sender } = req.body;
 
-  console.log("📦 /confirm payload:", req.body);
-
-  amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
-  if (!amount || isNaN(amount)) {
-    return res.status(400).json({ error: 'Amount must be a valid number.' });
-  }
-
-  memo = typeof memo === 'string'
-    ? memo.trim()
-    : memo
-    ? JSON.stringify(memo).trim()
-    : 'No memo provided';
-
-  if (memo.length > 100) {
-    memo = memo.slice(0, 97) + '...';
-  }
-
-  if (!recipient || !sender) {
-    return res.status(400).json({ error: 'Recipient and sender are required.' });
+  if (!amount || !memo || !recipient || !sender || isNaN(amount)) {
+    return res.status(400).json({ error: 'Invalid transaction data.' });
   }
 
   const senderWallet = walletMap[sender];
@@ -131,20 +99,23 @@ app.post('/confirm', async (req, res) => {
 
     const wallet = xrpl.Wallet.fromSeed(senderWallet.secret);
 
+    // ✅ Safely convert memo to UTF-8 hex (Vercel-safe)
+    const safeMemo = String(memo || 'No memo provided').trim();
+    const hexMemo = Buffer.from(safeMemo, 'utf8').toString('hex');
+
     const tx = {
       TransactionType: "Payment",
       Account: senderWallet.address,
-      Amount: xrpl.xrpToDrops(amount),
+      Amount: xrpl.xrpToDrops(String(amount)),
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          // ✅ Final string-safe fix
-          MemoData: Buffer.from(String(memo || 'No memo provided'), 'utf8').toString('hex')
+          MemoData: hexMemo
         }
       }]
     };
 
-    console.log("🛠 XRPL TX object:", tx);
+    console.log("📤 XRPL TX:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
@@ -168,8 +139,3 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
-
-
-
-
-
