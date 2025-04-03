@@ -84,26 +84,26 @@ app.post('/confirm', async (req, res) => {
 
   console.log("🟡 /confirm payload received:", req.body);
 
-  // Validate and sanitize amount
+  // === Sanitize and validate amount
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
   if (!amount || isNaN(amount)) {
     return res.status(400).json({ error: 'Amount must be a valid number.' });
   }
 
-  // Validate and sanitize memo
-  if (typeof memo !== 'string') {
-    if (typeof memo === 'object') {
-      memo = JSON.stringify(memo);
-    } else if (memo === undefined || memo === null) {
-      memo = 'No memo provided';
-    } else {
-      memo = String(memo);
-    }
+  // === Sanitize memo with strict safety (for Vercel/XRPL)
+  let cleanMemo;
+  if (typeof memo === 'string') {
+    cleanMemo = memo.trim();
+  } else if (typeof memo === 'object') {
+    cleanMemo = JSON.stringify(memo).trim();
+  } else if (memo === undefined || memo === null) {
+    cleanMemo = 'No memo provided';
+  } else {
+    cleanMemo = String(memo).trim();
   }
 
-  memo = memo.trim();
-  if (memo.length > 100) {
-    memo = memo.slice(0, 97) + '...';
+  if (cleanMemo.length > 100) {
+    cleanMemo = cleanMemo.slice(0, 97) + '...';
   }
 
   if (!recipient || !sender) {
@@ -130,12 +130,12 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(memo, 'utf8').toString('hex')
+          MemoData: Buffer.from(cleanMemo, 'utf8').toString('hex')
         }
       }]
     };
 
-    console.log("📤 Prepared TX:", tx);
+    console.log("📤 XRPL TX object:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
@@ -159,4 +159,5 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
