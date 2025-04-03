@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const xrpl = require('xrpl');
@@ -5,9 +6,14 @@ const path = require('path');
 
 const app = express();
 
+// Helps parse form and JSON data
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Serve static files (CSS, JS, images) from /public
 app.use(express.static(path.join(__dirname, 'public')));
+
+// EJS view engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -33,11 +39,13 @@ const walletMap = {
 
 // === Home Page ===
 app.get('/', (req, res) => {
+  console.log("✅ GET / (Home Page)");
   res.render('index');
 });
 
 // === /preview ===
 app.post('/preview', async (req, res) => {
+  console.log("✅ POST /preview");
   const { memoInput } = req.body;
 
   const prompt = `From this input: "${memoInput}", extract:
@@ -64,12 +72,15 @@ Respond ONLY in this JSON format:
       }
     );
 
-    const { amount, recipient, memo } = JSON.parse(response.data.choices[0].message.content.trim());
+    // Parse the JSON that GPT returned
+    const parsed = JSON.parse(response.data.choices[0].message.content.trim());
+    const { amount, recipient, memo } = parsed;
 
     if (!walletMap[recipient]) {
       return res.status(400).json({ error: `Recipient "${recipient}" not recognized.` });
     }
 
+    // Return the structured data
     res.json({ amount, memo, recipient });
 
   } catch (error) {
@@ -80,13 +91,10 @@ Respond ONLY in this JSON format:
 
 // === /confirm ===
 app.post('/confirm', async (req, res) => {
-  let { amount, memo, recipient, sender } = req.body;
+  console.log("✅ POST /confirm");
+  console.log("   Body received:", req.body);
 
-  console.log("⚠️ RAW req.body:", req.body);
-  console.log("🧪 typeof amount:", typeof amount);
-  console.log("🧪 typeof memo:", typeof memo);
-  console.log("🧪 typeof recipient:", typeof recipient);
-  console.log("🧪 typeof sender:", typeof sender);
+  let { amount, memo, recipient, sender } = req.body;
 
   // Sanitize amount
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
@@ -110,7 +118,7 @@ app.post('/confirm', async (req, res) => {
     cleanMemo = cleanMemo.slice(0, 97) + '...';
   }
 
-  // Encode memo safely
+  // Encode memo as hex
   let hexMemo;
   try {
     hexMemo = Buffer.from(cleanMemo, 'utf8').toString('hex');
@@ -164,7 +172,6 @@ app.post('/confirm', async (req, res) => {
       explorer: explorerUrl,
       status: result.result.meta.TransactionResult
     });
-
   } catch (err) {
     console.error('❌ Confirm Error:', err?.data || err?.message || err);
     res.status(500).json({ error: 'Transaction failed.' });
@@ -172,6 +179,3 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
-
-
-
