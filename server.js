@@ -84,12 +84,13 @@ app.post('/confirm', async (req, res) => {
 
   console.log("📦 /confirm payload:", req.body);
 
-  // === Sanitize & validate ===
+  // Sanitize amount
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
   if (!amount || isNaN(amount)) {
     return res.status(400).json({ error: 'Amount must be a valid number.' });
   }
 
+  // Sanitize memo
   memo = typeof memo === 'string'
     ? memo.trim()
     : memo
@@ -124,12 +125,12 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(memo, 'utf8').toString('hex')
+          MemoData: Buffer.from(String(memo || 'No memo'), 'utf8').toString('hex')
         }
       }]
     };
 
-    console.log("🛠 TX to XRPL:", tx);
+    console.log("🛠 XRPL TX object:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
@@ -153,6 +154,7 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
 
 
