@@ -82,7 +82,12 @@ Respond ONLY in this JSON format:
 app.post('/confirm', async (req, res) => {
   let { amount, memo, recipient, sender } = req.body;
 
-  // Handle Vercel decoding quirks
+  // Debug logs (for Vercel and local)
+  console.log("DEBUG: /confirm payload:", req.body);
+  console.log("DEBUG: typeof amount:", typeof amount);
+  console.log("DEBUG: typeof memo:", typeof memo);
+
+  // Safeguard against Vercel’s edge/runtime parsing quirks
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
   memo = typeof memo === 'string' ? memo : (memo ? JSON.stringify(memo) : 'No memo provided');
 
@@ -110,10 +115,12 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(memo, 'utf8').toString('hex')
+          MemoData: Buffer.from(String(memo), 'utf8').toString('hex') // 👈 Ensure memo is string
         }
       }]
     };
+
+    console.log("DEBUG: TX object to submit:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
@@ -136,4 +143,5 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
