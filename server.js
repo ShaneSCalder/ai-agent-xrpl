@@ -64,7 +64,22 @@ Respond ONLY in this JSON format:
       }
     );
 
-    const { amount, recipient, memo } = JSON.parse(response.data.choices[0].message.content.trim());
+    const parsed = JSON.parse(response.data.choices[0].message.content.trim());
+
+    const amount = typeof parsed.amount === 'number' ? parsed.amount : Number(parsed.amount);
+    const recipient = parsed.recipient;
+    let memo = parsed.memo;
+
+    // ✅ Defensive memo sanitization
+    memo = typeof memo === 'string'
+      ? memo.trim()
+      : memo
+      ? JSON.stringify(memo).trim()
+      : 'No memo provided';
+
+    if (memo.length > 100) {
+      memo = memo.slice(0, 97) + '...';
+    }
 
     if (!walletMap[recipient]) {
       return res.status(400).json({ error: `Recipient "${recipient}" not recognized.` });
@@ -84,13 +99,11 @@ app.post('/confirm', async (req, res) => {
 
   console.log("📦 /confirm payload:", req.body);
 
-  // Sanitize amount
   amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
   if (!amount || isNaN(amount)) {
     return res.status(400).json({ error: 'Amount must be a valid number.' });
   }
 
-  // Sanitize memo
   memo = typeof memo === 'string'
     ? memo.trim()
     : memo
@@ -125,7 +138,8 @@ app.post('/confirm', async (req, res) => {
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(String(memo || 'No memo'), 'utf8').toString('hex')
+          // ✅ Final string-safe fix
+          MemoData: Buffer.from(String(memo || 'No memo provided'), 'utf8').toString('hex')
         }
       }]
     };
@@ -154,6 +168,7 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
 
 
 
