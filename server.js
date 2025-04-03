@@ -80,10 +80,34 @@ Respond ONLY in this JSON format:
 
 // === /confirm ===
 app.post('/confirm', async (req, res) => {
-  const { amount, memo, recipient, sender } = req.body;
+  let { amount, memo, recipient, sender } = req.body;
 
-  if (!amount || !memo || !recipient || !sender || isNaN(amount)) {
-    return res.status(400).json({ error: 'Invalid transaction data.' });
+  console.log("🟡 /confirm payload received:", req.body);
+
+  // Validate and sanitize amount
+  amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
+  if (!amount || isNaN(amount)) {
+    return res.status(400).json({ error: 'Amount must be a valid number.' });
+  }
+
+  // Validate and sanitize memo
+  if (typeof memo !== 'string') {
+    if (typeof memo === 'object') {
+      memo = JSON.stringify(memo);
+    } else if (memo === undefined || memo === null) {
+      memo = 'No memo provided';
+    } else {
+      memo = String(memo);
+    }
+  }
+
+  memo = memo.trim();
+  if (memo.length > 100) {
+    memo = memo.slice(0, 97) + '...';
+  }
+
+  if (!recipient || !sender) {
+    return res.status(400).json({ error: 'Recipient and sender are required.' });
   }
 
   const senderWallet = walletMap[sender];
@@ -99,23 +123,19 @@ app.post('/confirm', async (req, res) => {
 
     const wallet = xrpl.Wallet.fromSeed(senderWallet.secret);
 
-    // ✅ Safely convert memo to UTF-8 hex (Vercel-safe)
-    const safeMemo = String(memo || 'No memo provided').trim();
-    const hexMemo = Buffer.from(safeMemo, 'utf8').toString('hex');
-
     const tx = {
       TransactionType: "Payment",
       Account: senderWallet.address,
-      Amount: xrpl.xrpToDrops(String(amount)),
+      Amount: xrpl.xrpToDrops(amount),
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: hexMemo
+          MemoData: Buffer.from(memo, 'utf8').toString('hex')
         }
       }]
     };
 
-    console.log("📤 XRPL TX:", tx);
+    console.log("📤 Prepared TX:", tx);
 
     const prepared = await client.autofill(tx);
     const signed = wallet.sign(prepared);
@@ -139,3 +159,4 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
