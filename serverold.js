@@ -99,18 +99,14 @@ app.post('/confirm', async (req, res) => {
 
     const wallet = xrpl.Wallet.fromSeed(senderWallet.secret);
 
-    // 🛠 Ensure memo and amount are strings
-    const cleanMemo = String(memo);
-    const cleanAmount = String(amount);
-
     const tx = {
       TransactionType: "Payment",
       Account: senderWallet.address,
-      Amount: xrpl.xrpToDrops(cleanAmount),
+      Amount: xrpl.xrpToDrops(String(amount)),
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(cleanMemo, 'utf8').toString('hex')
+          MemoData: Buffer.from(memo).toString('hex')
         }
       }]
     };
@@ -130,7 +126,7 @@ app.post('/confirm', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Confirm Error:', err?.data || err?.message || err);
+    console.error('❌ Confirm Error:', err.message);
     res.status(500).json({ error: 'Transaction failed.' });
   }
 });
