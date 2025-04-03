@@ -80,7 +80,11 @@ Respond ONLY in this JSON format:
 
 // === /confirm ===
 app.post('/confirm', async (req, res) => {
-  const { amount, memo, recipient, sender } = req.body;
+  let { amount, memo, recipient, sender } = req.body;
+
+  // Handle Vercel decoding quirks
+  amount = typeof amount === 'number' || typeof amount === 'string' ? String(amount) : '';
+  memo = typeof memo === 'string' ? memo : (memo ? JSON.stringify(memo) : 'No memo provided');
 
   if (!amount || !memo || !recipient || !sender || isNaN(amount)) {
     return res.status(400).json({ error: 'Invalid transaction data.' });
@@ -99,18 +103,14 @@ app.post('/confirm', async (req, res) => {
 
     const wallet = xrpl.Wallet.fromSeed(senderWallet.secret);
 
-    // 🛠 Ensure memo and amount are strings
-    const cleanMemo = String(memo);
-    const cleanAmount = String(amount);
-
     const tx = {
       TransactionType: "Payment",
       Account: senderWallet.address,
-      Amount: xrpl.xrpToDrops(cleanAmount),
+      Amount: xrpl.xrpToDrops(amount),
       Destination: recipientWallet.address,
       Memos: [{
         Memo: {
-          MemoData: Buffer.from(cleanMemo, 'utf8').toString('hex')
+          MemoData: Buffer.from(memo, 'utf8').toString('hex')
         }
       }]
     };
@@ -136,3 +136,4 @@ app.post('/confirm', async (req, res) => {
 });
 
 module.exports = app;
+
